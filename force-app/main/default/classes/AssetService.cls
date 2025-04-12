@@ -10,7 +10,7 @@ global class AssetService extends a{
         // Get the asset identifier from the request
         assetId = getAssetIdentifier(request);
         
-        List<Asset> assets = queryAssets(assetId);
+        Asset assets = queryAssets(assetId);
 
         // Updates the asset status to 'Lost'
         updateAssets(assets);
@@ -18,21 +18,22 @@ global class AssetService extends a{
         // Creates a claim record if there is an active comprehensive insurance coverage
         
         
-        
         // Return a success message
         return 'Asset with ID ' + assetId + ' has been reported as lost.';
     }
     
     // Helper method to updates the asset status to 'Lost'
-    private static void updateAssets(List<Asset> assets) {
+    private static void updateAssets(Asset assets) {
         
-        if (assets.size() > 0) {
-            for (Asset asset : assets) {
-                asset.Status = 'Lost';
+        if (assets != null) {
+            assets.Status = 'Lost';
+            try {
+                update assets;
+            } catch (DmlException e) {
+                System.debug('Error updating asset status: ' + e.getMessage());
             }
-            update assets;
         } else {
-            System.debug('No assets found with the given ID');
+            System.debug('No asset found with the given identifier.');
         }
     }
     
@@ -74,7 +75,7 @@ global class AssetService extends a{
     }
 
     // Helper method to query the assets
-    private static List<Asset> queryAssets(String assetId) {
+    private static Asset queryAssets(String assetId) {
         return [
             SELECT Id, Asset_Identifier__c, Name, Status, (
                 SELECT Id, Asset__c, Active__c, Coverage__c 
