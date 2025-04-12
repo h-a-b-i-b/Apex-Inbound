@@ -10,7 +10,7 @@ global class AssetService extends a{
         // Get the asset identifier from the request
         assetId = getAssetIdentifier(request);
         
-        List<Asset> assets = [SELECT Id, Asset_Identifier__c, Name, Status FROM Asset WHERE Asset_Identifier__c = :assetId];
+        List<Asset> assets = queryAssets(assetId);
 
         // Updates the asset status to 'Lost'
         updateAssets(assets);
@@ -71,5 +71,16 @@ global class AssetService extends a{
             return null;
         }
         return claim.Name;
+    }
+
+    // Helper method to query the assets
+    private static List<Asset> queryAssets(String assetId) {
+        return [
+            SELECT Id, Asset_Identifier__c, Name, Status, (
+                SELECT Id, Asset__c, Active__c, Coverage__c 
+                FROM Insurances__r) 
+            FROM Asset 
+            WHERE Asset_Identifier__c = :assetId
+        ];
     }
 }
