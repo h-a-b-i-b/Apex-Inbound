@@ -5,25 +5,26 @@ global class AssetService extends a{
     global static String reportLostDevice(){
         
         RestRequest request = RestContext.request;
-        String assetIdentifier = '';
+        String assetId = '';
         
         // Get the asset identifier from the request
-        assetIdentifier = getAssetIdentifier(request);
+        assetId = getAssetIdentifier(request);
         
+        List<Asset> assets = [SELECT Id, Asset_Identifier__c, Name, Status FROM Asset WHERE Asset_Identifier__c = :assetId];
+
         // Updates the asset status to 'Lost'
-        updateAssets(assetIdentifier);
+        updateAssets(assets);
         
         // Creates a claim record if there is an active comprehensive insurance coverage
         
         
         
         // Return a success message
-        return 'Asset with ID ' + assetIdentifier + ' has been reported as lost.';
+        return 'Asset with ID ' + assetId + ' has been reported as lost.';
     }
     
     // Helper method to updates the asset status to 'Lost'
-    private static void updateAssets(String assetId) {
-        List<Asset> assets = [SELECT Id, Asset_Identifier__c, Name, Status FROM Asset WHERE Asset_Identifier__c = :assetId];
+    private static void updateAssets(List<Asset> assets) {
         
         if (assets.size() > 0) {
             for (Asset asset : assets) {
