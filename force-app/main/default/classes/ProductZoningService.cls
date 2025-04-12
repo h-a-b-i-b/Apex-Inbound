@@ -1,71 +1,65 @@
 @RestResource(urlMapping='/ProductZoning/*')
 global with sharing class ProductZoningService {
-  
+    // Service dependency: can be overridden for unit testing
+    public static ProductGeoMappingService mappingService = new ProductGeoMappingService();
+
     @HttpGet
     global static List<String> doGet() {
+        // Retrieve the REST context objects
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
-
-        List<String> permisibleFlyZones = new List<String>();
-        Product2 product = new Product2();
-
-        // Get Country Code from the header
-        String countryCode = req.headers.get('CountryCode') ?? 'US';
-        // Get the Product Code from the URI
-        String ProductCode = req.requestURI.substring(req.requestURI.lastIndexOf('/')+1);
-
-        // Validate the Product Code, if it is null or empty return ProductCode is missing or doesn't exist in response.
-        if (String.isBlank(ProductCode)) {
-            res.statusCode = 400;
-            res.responseBody = Blob.valueOf('ProductCode is missing or doesn\'t exist.');
-            return null;
-        }
-        System.debug('ProductCode: ' + ProductCode);
-        System.debug('CountryCode: ' + countryCode);
         
+        // Initialize the list to store results
+        List<String> permissibleFlyZones = new List<String>();
+
+        // Retrieve Country Code from the header or default to US
+        String countryCode = req.headers.get('CountryCode');
+        if (String.isBlank(countryCode)) {
+            countryCode = 'US';
+        }
+        
+        // Get the product code from query parameter "ProductCode", then fallback to path extraction.
+        String productCode = req.params.get('ProductCode');
+        if (String.isBlank(productCode)) {
+            permissibleFlyZones.add('ProductCode is missing or doesn\'t exist');
+            return permissibleFlyZones;
+        }
+
+        System.debug('county code: ' + countryCode);
+        System.debug('product code: ' + productCode);
+        
+        // Retrieve the Product2 record by ProductCode
+        Product2 product;
         try {
-            // Get Product Family from Product2
-            product = [SELECT Id, Family FROM Product2 WHERE ProductCode = :ProductCode LIMIT 1];
+            product = [SELECT Id, Family FROM Product2 WHERE ProductCode = :productCode LIMIT 1];
             System.debug('Product Family: ' + product.Family);
-            
-        } catch (QueryException e) {
-            res.statusCode = 404;
-            res.responseBody = Blob.valueOf('ProductCode is missing or doesn\'t exist..');
-            permisibleFlyZones.add('ProductCode is missing or doesn\'t exist...');
-            return permisibleFlyZones;
-        } catch (Exception e) {
-            res.statusCode = 500;
-            permisibleFlyZones.add('Internal Server Error');
-            res.responseBody = Blob.valueOf('Internal Server Error');
-            return permisibleFlyZones;
+        } catch (QueryException qe) {
+            permissibleFlyZones.add('ProductCode is missing or doesn\'t exist');
+            return permissibleFlyZones;
         }
 
+        // Get custom metadata mappings for fly zones via the mapping service
+        List<Product_Geo_Mapping__mdt> productGeoMappings;
 
-
-        // Get the Permissible Fly Zone from Product Geo Mapping metadata
-        List<Product_Geo_Mapping__mdt> productGeoMapping = [
-            SELECT Id, Permissible_Fly_Zone__c 
-            FROM Product_Geo_Mapping__mdt 
-            WHERE Product_Family__c = :product.Family 
-            AND Country_Code__c = :countryCode 
-        ];
-
-        if (productGeoMapping.isEmpty()) {
-            permisibleFlyZones.add('Confirm with the local authorities');
-            res.statusCode = 404;
-            res.responseBody = Blob.valueOf('Permissible Fly Zone not found');
-            return permisibleFlyZones;
+        productGeoMappings = mappingService.getMappings(product.Family, countryCode);
+        
+        // If no metadata records are found, return a default response
+        if (productGeoMappings.isEmpty()) {
+            res.statusCode = 200;
+            permissibleFlyZones.add('Confirm with the local authorities');
+            return permissibleFlyZones;
         }
 
-        // Get the Permissible Fly Zone from Product Geo Mapping
-        for (Product_Geo_Mapping__mdt mapping : productGeoMapping) {
-            if (mapping.Permissible_Fly_Zone__c != null) {
-                permisibleFlyZones.add(mapping.Permissible_Fly_Zone__c);
-            } else {
-                permisibleFlyZones.add('Confirm with the local authorities');
+        // Process mappings to collect permissible fly zones
+        for (Product_Geo_Mapping__mdt mapping : productGeoMappings) {
+            String flyZone = mapping.Permissible_Fly_Zone__c;
+            if (!String.isBlank(flyZone)) {
+                permissibleFlyZones.add(flyZone);
             }
         }
         
-        return permisibleFlyZones;
-    }
+        // Optional: set a success status code (e.g., 200) explicitly
+        res.statusCode = 200;
+        return permissibleFlyZones;
+    }  
 }
