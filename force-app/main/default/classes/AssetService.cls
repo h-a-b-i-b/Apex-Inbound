@@ -6,20 +6,42 @@ global class AssetService extends a{
         
         RestRequest request = RestContext.request;
         String assetId = '';
+        String claimNumber = '';
+        String response = '';
+        Id contactId;
+        Insurance__c insurance;
         
         // Get the asset identifier from the request
         assetId = getAssetIdentifier(request);
         
         Asset asset = queryAssets(assetId);
 
+        if (asset != null) {
+            contactId = (Id) asset.ContactId;
+            insurance = asset.Insurances__r[0];
+        }
+
+        // log the asset details
+        log(asset);
+        log(contactId);
+        log(insurance);
+
         // Updates the asset status to 'Lost'
         updateAssets(asset);
         
         // Creates a claim record if there is an active comprehensive insurance coverage
+        if (insurance != null && insurance.Coverage__c == 'Comprehensive' && insurance.Active__c) {
+            claimNumber = createClaimRecord(asset.Id, contactId, insurance.Id);
+
+            // log the claim number
+            log(claimNumber);
+        }
+        // log the claim number
+        log(claimNumber);
+
+        response = claimNumber;
         
-        
-        // Return a success message
-        return 'Asset with ID ' + assetId + ' has been reported as lost.';
+        return response;
     }
     
     // Helper method to updates the asset status to 'Lost'
@@ -50,7 +72,7 @@ global class AssetService extends a{
         String assetIdentifier = (String)requestbody.get('assetIdentifier');
         
         if (String.isBlank(assetIdentifier)) {
-            return null;
+            return 'No device found.';
         }
         return assetIdentifier;
     }
@@ -67,6 +89,13 @@ global class AssetService extends a{
         // Insert the claim record
         try {
             insert claim;
+    
+            // Re-query the inserted record to get the auto-numbered Name
+            claim = [SELECT Name FROM Claim__c WHERE Id = :claim.Id];
+    
+            // Log the claim name
+            log(claim);
+    
         } catch (DmlException e) {
             System.debug('Error creating claim record: ' + e.getMessage());
             return null;
@@ -77,7 +106,7 @@ global class AssetService extends a{
     // Helper method to query the asset
     private static Asset queryAssets(String assetId) {
         return [
-            SELECT Id, Asset_Identifier__c, Name, Status, (
+            SELECT Id, Asset_Identifier__c, Name, Status, ContactId, (
                 SELECT Id, Asset__c, Active__c, Coverage__c 
                 FROM Insurances__r) 
             FROM Asset 
