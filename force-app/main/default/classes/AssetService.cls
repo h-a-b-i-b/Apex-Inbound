@@ -18,8 +18,8 @@ global class AssetService extends a{
     }
 
     // Helper method to updates the asset status to 'Lost'
-    private static void updateAssets(String assetIdentifier) {
-        List<Asset> assets = [SELECT Id, Asset_Identifier__c, Name, Status FROM Asset WHERE Asset_Identifier__c = :assetIdentifier];
+    private static void updateAssets(String assetId) {
+        List<Asset> assets = [SELECT Id, Asset_Identifier__c, Name, Status FROM Asset WHERE Asset_Identifier__c = :assetId];
         
         if (assets.size() > 0) {
             for (Asset asset : assets) {
