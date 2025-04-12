@@ -72,7 +72,7 @@ global class AssetService extends a{
         String assetIdentifier = (String)requestbody.get('assetIdentifier');
         
         if (String.isBlank(assetIdentifier)) {
-            return 'No device found.';
+            return null;
         }
         return assetIdentifier;
     }
