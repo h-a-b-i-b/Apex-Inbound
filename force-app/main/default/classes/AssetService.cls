@@ -8,17 +8,32 @@ global class AssetService extends a{
         String assetId = '';
         String claimNumber = '';
         String response = '';
+        String errorMsg = 'No device found.';
         Id contactId;
         Insurance__c insurance;
+        Asset asset;
         
         // Get the asset identifier from the request
         assetId = getAssetIdentifier(request);
-        
-        Asset asset = queryAssets(assetId);
+
+        // check if the asset identifier is null or empty
+        if (String.isBlank(assetId)) {
+            System.debug('Asset identifier is null or empty.');
+            return errorMsg;
+        }
+        try {
+            asset = queryAssets(assetId);
+        } catch (QueryException e) {
+            System.debug('Error querying asset: ' + e.getMessage());
+            return errorMsg;
+        }
 
         if (asset != null) {
             contactId = (Id) asset.ContactId;
             insurance = asset.Insurances__r[0];
+        } else {
+            System.debug('No asset found with the given identifier.');
+            return errorMsg;
         }
 
         // log the asset details
@@ -61,14 +76,24 @@ global class AssetService extends a{
     
     // Helper method to get the asset identifirer
     private static String getAssetIdentifier(RestRequest request) {
-        
-        // Deserialize the JSON string into name-value pairs
-        Map<String, Object> requestbody = (Map<String, Object>)JSON.deserializeUntyped(request.requestbody.tostring());
+
+        Map<String, Object> requestbody = new Map<String, Object>();
+        try{    
+            // Deserialize the JSON string into name-value pairs
+            requestbody = (Map<String, Object>)JSON.deserializeUntyped(request.requestbody.tostring());
+        } catch (JSONException e) {
+            System.debug('Error deserializing JSON request body: ' + e.getMessage());
+            return null;
+        } 
         
         // Log the request body
         log(requestbody);
         
-        // Extract the asset identifier from the request body
+        // Check if the assetIdentifier is provided in request body or empty
+        if(requestbody == null || requestbody.isEmpty()) {
+            System.debug('Request body is empty or null.');
+            return null;
+        }
         String assetIdentifier = (String)requestbody.get('assetIdentifier');
         
         if (String.isBlank(assetIdentifier)) {
