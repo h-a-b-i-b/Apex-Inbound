@@ -30,26 +30,32 @@ global class AssetService extends a{
 
         if (asset != null) {
             contactId = (Id) asset.ContactId;
-            insurance = asset.Insurances__r[0];
         } else {
             System.debug('No asset found with the given identifier.');
             return errorMsg;
         }
 
         // log the asset details
-        log(asset);
-        log(contactId);
-        log(insurance);
+        log('Asset Id: ' + asset);
+        log('contact Id: ' + contactId);
+        log('Insurance: ' + insurance);
 
-        // Updates the asset status to 'Lost'
-        updateAssets(asset);
+        // Check if the asset has any insurance records
+        insurance = asset.Insurances__r[0] ?? null;
         
         // Creates a claim record if there is an active comprehensive insurance coverage
         if (insurance != null && insurance.Coverage__c == 'Comprehensive' && insurance.Active__c) {
-            claimNumber = createClaimRecord(asset.Id, contactId, insurance.Id);
+            // Updates the asset status to 'Lost'
+            updateAssets(asset);
 
+            claimNumber = createClaimRecord(asset.Id, contactId, insurance.Id);
             // log the claim number
             log(claimNumber);
+        } else {
+            System.debug('No active comprehensive insurance coverage found.');
+            // Updates the asset status to 'Lost'
+            updateAssets(asset);
+            return 'No coverage. Asset status adjusted to Lost.';
         }
         // log the claim number
         log(claimNumber);
