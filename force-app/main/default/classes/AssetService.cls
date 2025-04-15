@@ -1,7 +1,7 @@
 @RestResource(urlMapping='/lost')
-global class AssetService extends a{
+global class AssetService {
     
-    @HttpGet
+    @HttpPost
     global static String reportLostDevice(){
         
         RestRequest request = RestContext.request;
@@ -27,18 +27,9 @@ global class AssetService extends a{
             System.debug('Error querying asset: ' + e.getMessage());
             return errorMsg;
         }
-
-        if (asset != null) {
-            contactId = (Id) asset.ContactId;
-        } else {
-            System.debug('No asset found with the given identifier.');
-            return errorMsg;
-        }
-
-        // log the asset details
-        log('Asset Id: ' + asset);
-        log('contact Id: ' + contactId);
-        log('Insurance: ' + insurance);
+        
+        // Assign the contact ID from the asset
+        contactId = (Id) asset.ContactId;
 
         // Check if the asset has any insurance records
         insurance = asset.Insurances__r[0] ?? null;
@@ -49,16 +40,12 @@ global class AssetService extends a{
             updateAssets(asset);
 
             claimNumber = createClaimRecord(asset.Id, contactId, insurance.Id);
-            // log the claim number
-            log(claimNumber);
         } else {
             System.debug('No active comprehensive insurance coverage found.');
             // Updates the asset status to 'Lost'
             updateAssets(asset);
             return 'No coverage. Asset status adjusted to Lost.';
         }
-        // log the claim number
-        log(claimNumber);
 
         response = claimNumber;
         
@@ -70,11 +57,7 @@ global class AssetService extends a{
         
         if (asset != null) {
             asset.Status = 'Lost';
-            try {
-                update asset;
-            } catch (DmlException e) {
-                System.debug('Error updating asset status: ' + e.getMessage());
-            }
+            update asset;
         } else {
             System.debug('No asset found with the given identifier.');
         }
@@ -90,22 +73,14 @@ global class AssetService extends a{
         } catch (JSONException e) {
             System.debug('Error deserializing JSON request body: ' + e.getMessage());
             return null;
-        } 
-        
-        // Log the request body
-        log(requestbody);
-        
-        // Check if the assetIdentifier is provided in request body or empty
-        if(requestbody == null || requestbody.isEmpty()) {
-            System.debug('Request body is empty or null.');
+        } catch (TypeException e) {
+            System.debug('Error deserializing JSON request body: ' + e.getMessage());
             return null;
         }
-        String assetIdentifier = (String)requestbody.get('assetIdentifier');
         
-        if (String.isBlank(assetIdentifier)) {
-            return null;
-        }
-        return assetIdentifier;
+        String assetIdentifier = (String)requestbody?.get('assetIdentifier');
+        
+        return assetIdentifier ?? null;
     }
     
     // Helper method to create a claim record
@@ -133,19 +108,11 @@ global class AssetService extends a{
         claim.Insurance__c = insuranceId;
         
         // Insert the claim record
-        try {
-            insert claim;
-    
-            // Re-query the inserted record to get the auto-numbered Name
-            claim = [SELECT Name FROM Claim__c WHERE Id = :claim.Id];
-    
-            // Log the claim name
-            log(claim);
-    
-        } catch (DmlException e) {
-            System.debug('Error creating claim record: ' + e.getMessage());
-            return null;
-        }
+        insert claim;
+
+        // Re-query the inserted record to get the auto-numbered Name
+        claim = [SELECT Name FROM Claim__c WHERE Id = :claim.Id];
+
         return claim.Name;
     }
 
