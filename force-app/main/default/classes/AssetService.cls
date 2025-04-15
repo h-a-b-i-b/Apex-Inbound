@@ -104,6 +104,21 @@ global class AssetService extends a{
     
     // Helper method to create a claim record
     private static String createClaimRecord(String assetId, Id contactId, Id insuranceId) {
+
+        // Check if claim with type 'Loss' already exists
+        List<Claim__c> existingClaims = [
+            SELECT Id, Name 
+            FROM Claim__c 
+            WHERE Asset__c = :assetId 
+            AND Type__c = 'Loss' 
+            AND Status__c != 'Closed'
+        ];
+        if (!existingClaims.isEmpty()) {
+            System.debug('Claim already exists for this asset.');
+            return existingClaims[0].Name;
+        }
+
+        // Create a new claim record
         Claim__c claim = new Claim__c();
         claim.Asset__c = assetId;
         claim.Status__c = 'New';
