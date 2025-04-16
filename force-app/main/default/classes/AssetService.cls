@@ -2,7 +2,7 @@
 global class AssetService {
     
     @HttpPost
-    global static String reportLostDevice(){
+    global static String reportLostDevice(String assetIdentifier) {
         
         RestRequest request = RestContext.request;
         String assetId = '';
@@ -12,9 +12,18 @@ global class AssetService {
         Id contactId;
         Insurance__c insurance;
         Asset asset;
+
+        a.log('assetIdentifier: ' + assetIdentifier);
         
-        // Get the asset identifier from the request
-        assetId = getAssetIdentifier(request);
+        if (assetIdentifier != null) {
+            a.log('assetIdentifier from parameter : ' + assetIdentifier);
+            assetId = assetIdentifier;
+        } else {
+            a.log('assetIdentifier from request[ : ' + assetIdentifier);
+            // Get the asset identifier from the request
+            assetId = getAssetIdentifier(request);
+            a.log('assetIdentifier from request] : ' + assetId);
+        }
 
         // check if the asset identifier is null or empty
         if (String.isBlank(assetId)) {
@@ -31,8 +40,30 @@ global class AssetService {
         // Assign the contact ID from the asset
         contactId = (Id) asset.ContactId;
 
+        List<Insurance__c> insurances = new List<Insurance__c>();
+        try {
+            
+            insurance = [
+                SELECT Id, Asset__c, Active__c, Coverage__c 
+                FROM Insurance__c
+                WHERE Asset__c = :asset.Id 
+                AND Active__c = true
+            ];
+
+            // if (insurances.size() > 0) {
+            //     insurance = insurances[0];
+            // }
+        } catch (QueryException e) {
+            System.debug('Error querying insurance: ' + e.getMessage());
+            System.debug('No active comprehensive insurance coverage found.');
+            // Updates the asset status to 'Lost'
+            updateAssets(asset);
+            return 'No coverage. Asset status adjusted to Lost.';
+        }
         // Check if the asset has any insurance records
-        insurance = asset.Insurances__r[0] ?? null;
+
+        a.log('asset: ' + asset);
+        a.log('insurance: ' + insurance);
         
         // Creates a claim record if there is an active comprehensive insurance coverage
         if (insurance != null && insurance.Coverage__c == 'Comprehensive' && insurance.Active__c) {
@@ -41,7 +72,6 @@ global class AssetService {
 
             claimNumber = createClaimRecord(asset.Id, contactId, insurance.Id);
         } else {
-            System.debug('No active comprehensive insurance coverage found.');
             // Updates the asset status to 'Lost'
             updateAssets(asset);
             return 'No coverage. Asset status adjusted to Lost.';
@@ -96,7 +126,7 @@ global class AssetService {
         ];
         if (!existingClaims.isEmpty()) {
             System.debug('Claim already exists for this asset.');
-            return existingClaims[0].Name;
+            return existingClaims[0].Name + ' already filed.';
         }
 
         // Create a new claim record
