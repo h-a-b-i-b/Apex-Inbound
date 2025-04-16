@@ -12,17 +12,9 @@ global class AssetService {
         Id contactId;
         Insurance__c insurance;
         Asset asset;
-
-        a.log('assetIdentifier: ' + assetIdentifier);
         
         if (assetIdentifier != null) {
-            a.log('assetIdentifier from parameter : ' + assetIdentifier);
             assetId = assetIdentifier;
-        } else {
-            a.log('assetIdentifier from request[ : ' + assetIdentifier);
-            // Get the asset identifier from the request
-            assetId = getAssetIdentifier(request);
-            a.log('assetIdentifier from request] : ' + assetId);
         }
 
         // check if the asset identifier is null or empty
@@ -41,29 +33,20 @@ global class AssetService {
         contactId = (Id) asset.ContactId;
 
         List<Insurance__c> insurances = new List<Insurance__c>();
-        try {
+
             
-            insurance = [
+            insurances = [
                 SELECT Id, Asset__c, Active__c, Coverage__c 
                 FROM Insurance__c
                 WHERE Asset__c = :asset.Id 
                 AND Active__c = true
             ];
-
-            // if (insurances.size() > 0) {
-            //     insurance = insurances[0];
-            // }
-        } catch (QueryException e) {
-            System.debug('Error querying insurance: ' + e.getMessage());
-            System.debug('No active comprehensive insurance coverage found.');
+        if (insurances.isEmpty()) {
             // Updates the asset status to 'Lost'
             updateAssets(asset);
             return 'No coverage. Asset status adjusted to Lost.';
-        }
-        // Check if the asset has any insurance records
-
-        a.log('asset: ' + asset);
-        a.log('insurance: ' + insurance);
+        } 
+        insurance = insurances[0];
         
         // Creates a claim record if there is an active comprehensive insurance coverage
         if (insurance != null && insurance.Coverage__c == 'Comprehensive' && insurance.Active__c) {
@@ -94,24 +77,24 @@ global class AssetService {
     }
     
     // Helper method to get the asset identifirer
-    private static String getAssetIdentifier(RestRequest request) {
+    // private static String getAssetIdentifier(RestRequest request) {
 
-        Map<String, Object> requestbody = new Map<String, Object>();
-        try{    
-            // Deserialize the JSON string into name-value pairs
-            requestbody = (Map<String, Object>)JSON.deserializeUntyped(request.requestbody.tostring());
-        } catch (JSONException e) {
-            System.debug('Error deserializing JSON request body: ' + e.getMessage());
-            return null;
-        } catch (TypeException e) {
-            System.debug('Error deserializing JSON request body: ' + e.getMessage());
-            return null;
-        }
+    //     Map<String, Object> requestbody = new Map<String, Object>();
+    //     try{    
+    //         // Deserialize the JSON string into name-value pairs
+    //         requestbody = (Map<String, Object>)JSON.deserializeUntyped(request.requestbody.tostring());
+    //     } catch (JSONException e) {
+    //         System.debug('Error deserializing JSON request body: ' + e.getMessage());
+    //         return null;
+    //     } catch (TypeException e) {
+    //         System.debug('Error deserializing JSON request body: ' + e.getMessage());
+    //         return null;
+    //     }
         
-        String assetIdentifier = (String)requestbody?.get('assetIdentifier');
+    //     String assetIdentifier = (String)requestbody?.get('assetIdentifier');
         
-        return assetIdentifier ?? null;
-    }
+    //     return assetIdentifier ?? null;
+    // }
     
     // Helper method to create a claim record
     private static String createClaimRecord(String assetId, Id contactId, Id insuranceId) {
