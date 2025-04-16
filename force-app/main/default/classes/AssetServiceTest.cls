@@ -54,7 +54,7 @@ private class AssetServiceTest {
         
         // Call the method
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice(testAsset.Asset_Identifier__c);
         Test.stopTest();
         
         // Verify results
@@ -88,7 +88,7 @@ private class AssetServiceTest {
         RestContext.response = new RestResponse();
         
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice(testAsset.Asset_Identifier__c);
         Test.stopTest();
         
         Asset updatedAsset = [SELECT Status FROM Asset WHERE Id = :testAsset.Id];
@@ -111,7 +111,7 @@ private class AssetServiceTest {
         RestContext.response = new RestResponse();
         
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice('INVALID_ID');
         Test.stopTest();
         
         System.assertEquals('No device found.', result);
@@ -129,7 +129,7 @@ private class AssetServiceTest {
         RestContext.response = new RestResponse();
         
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice('INVALID_ID');
         Test.stopTest();
         
         System.assertEquals('No device found.', result);
@@ -146,7 +146,7 @@ private class AssetServiceTest {
         RestContext.response = new RestResponse();
         
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice('');
         Test.stopTest();
         
         System.assertEquals('No device found.', result);
@@ -176,7 +176,7 @@ private class AssetServiceTest {
         RestContext.response = new RestResponse();
         
         Test.startTest();
-        String result = AssetService.reportLostDevice();
+        String result = AssetService.reportLostDevice(testAsset.Asset_Identifier__c);
         Test.stopTest();
         
         List<Claim__c> claims = [SELECT Id FROM Claim__c WHERE Asset__c = :testAsset.Id];
