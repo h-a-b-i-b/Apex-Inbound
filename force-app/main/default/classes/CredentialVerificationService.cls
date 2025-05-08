@@ -21,7 +21,7 @@ global with sharing class CredentialVerificationService {
             ];
         
         if (contacts.isEmpty()) {
-            System.debug('No contact found with the last name: ' + contactLastName);
+            // System.debug('No contact found with the last name: ' + contactLastName);
             return 'No record found';
         }
         
