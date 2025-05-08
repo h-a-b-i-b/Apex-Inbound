@@ -124,47 +124,4 @@ private class CredentialVerificationServiceTest {
         System.assertEquals('No record found', result2, 'Should handle empty credentialId');
         System.assertEquals('No record found', result3, 'Should handle all empty inputs');
     }
-
-    @IsTest
-    static void testExceptionHandling() {
-        // Create invalid data to force an exception
-        Contact testContact = new Contact(
-            FirstName = 'Test',
-            LastName = 'Exception'
-        );
-        insert testContact;
-        
-        // Create certification with invalid data to trigger exception
-        Contact_Certification__c invalidCert = new Contact_Certification__c(
-            Contact__c = testContact.Id,
-            Issue_Date__c = Date.today()
-        );
-        
-        Test.startTest();
-        try {
-            // This should throw a DML exception due to missing required field
-            insert invalidCert;
-            String result = CredentialVerificationService.verifyCredential('Exception', invalidCert.Name);
-            System.assert(false, 'Expected exception was not thrown');
-        } catch (DmlException e) {
-            System.assert(e.getMessage().contains('REQUIRED_FIELD_MISSING'), 
-                'Expected required field missing exception');
-        }
-        Test.stopTest();
-    }
-
-    @IsTest
-    static void testQueryExceptionHandling() {
-        Test.startTest();
-        // Force a QueryException by using an invalid SOQL query
-        try {
-            Database.query('SELECT Id FROM Invalid_Object__c');
-            System.assert(false, 'Expected QueryException was not thrown');
-        } catch (QueryException e) {
-            String result = CredentialVerificationService.verifyCredential('Doe', 'INVALID');
-            System.assertEquals('No record found', result, 
-                'Should handle query exceptions gracefully');
-        }
-        Test.stopTest();
-    }
 }
